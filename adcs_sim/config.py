@@ -8,6 +8,7 @@
 # ==============================================
 
 import numpy as np
+from utils import euler_2_quaternion
 
 
 # --- Initial parameters ---
@@ -20,8 +21,35 @@ MU_EARTH = 398600.4418      # km^3/s^2 (Standard Gravitational Parameter for Ear
 
 # Initial satellite state
 SATELITE_MASS = 2.6                             # kg
+
+# Inertia matrix in kg·m²
+SATELITE_INERTIA = np.array([
+    [0.9, 0.0, 0.0],
+    [0.0, 0.9, 0.0],
+    [0.0, 0.0, 0.3]
+])
+
+INERTIA = SATELITE_INERTIA
+INERTIA_INV = np.linalg.inv(INERTIA)
+
+
 ALTITUDE = 408                                  # km
 INITIAL_POSITION = [R_EARTH + ALTITUDE, 0, 0]   # in km
+
+# Satelite initail attitude and angular velocity
+PHI0 = 0        # rad                                                                
+THETA0 = 0      # rad
+PSI0 = 0        # rad
+INITIAL_ROTATION_QUATERNION = euler_2_quaternion(PHI0, THETA0, PSI0) # quaternion
+
+I0 = 0          # rad/s
+J0 = 0          # rad/s
+K0 = 0          # rad/s
+INITIAL_ANGULAR_VELOCITY = [I0, J0, K0] 
+
+# TORQUE
+INITIAL_MAGNETORQUERS = [0, 0, 0]
+INITIAL_TORQUE = INITIAL_MAGNETORQUERS
 
 # Orbit properties
 INCLINATION_DEG = 51.6                              # degrees (Approximate ISS inclination)
