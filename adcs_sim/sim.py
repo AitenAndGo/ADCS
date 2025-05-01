@@ -73,4 +73,9 @@ def simulate(duration, time_step):
         quaternions.append(newRot)
         omegas.append(newOmega)
 
+    positions = positions[:-1]
+    velocities = velocities[:-1]
+    quaternions = quaternions[:-1]
+    omegas = omegas[:-1]
+
     return times, positions, velocities, quaternions, omegas

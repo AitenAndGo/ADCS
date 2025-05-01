@@ -24,9 +24,9 @@ SATELITE_MASS = 2.6                             # kg
 
 # Inertia matrix in kg·m²
 SATELITE_INERTIA = np.array([
-    [0.9, 0.0, 0.0],
-    [0.0, 0.9, 0.0],
-    [0.0, 0.0, 0.3]
+    [0.7, 0.0, 0.0],
+    [0.0, 0.5, 0.0],
+    [0.0, 0.0, 0.6]
 ])
 
 INERTIA = SATELITE_INERTIA
@@ -37,14 +37,14 @@ ALTITUDE = 408                                  # km
 INITIAL_POSITION = [R_EARTH + ALTITUDE, 0, 0]   # in km
 
 # Satelite initail attitude and angular velocity
-PHI0 = 0        # rad                                                                
-THETA0 = 0      # rad
-PSI0 = 0        # rad
+PHI0 = 0.8          # rad                                                                
+THETA0 = 0.4        # rad
+PSI0 = -0.6         # rad
 INITIAL_ROTATION_QUATERNION = euler_2_quaternion(PHI0, THETA0, PSI0) # quaternion
 
-I0 = 0          # rad/s
-J0 = 0          # rad/s
-K0 = 0          # rad/s
+I0 = 00.021         # rad/s
+J0 = 00.013         # rad/s
+K0 = 00.037         # rad/s
 INITIAL_ANGULAR_VELOCITY = [I0, J0, K0] 
 
 # TORQUE
@@ -64,6 +64,6 @@ INITIAL_VELOCITY = np.array([0.0, v_mag * np.cos(INCLINATION_RAD),
 # Simulation time
 ORBIT_PERIOD = 2 * np.pi * np.sqrt(SEMI_MAJOR_AXIS**3 / MU_EARTH) # seconds
 
-NUM_ORBITS = 12                                 # Number of orbits to simulate
+NUM_ORBITS = 1                                 # Number of orbits to simulate
 SIMULATION_TIME = NUM_ORBITS * ORBIT_PERIOD     # Simulate for a few orbits (seconds)
-SIMULATION_TIMESTEP = 10                        # Simulation time step (seconds) - Increased for efficiency
+SIMULATION_TIMESTEP = 0.1                        # Simulation time step (seconds) - Increased for efficiency
