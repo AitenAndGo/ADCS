@@ -84,3 +84,11 @@ EARTH_MU = 3.986004418e14  # Earth's gravitational parameter (m^3/s^2)
 # Magnetic Field Parameters - IGRF is used in magnetic_field.py
 # The dipole MAGNETIC_MOMENT is no longer the primary model if IGRF is active.
 # MAGNETIC_MOMENT = np.array([0, 0, -7.96e22])  # Earth's magnetic dipole moment in A·m² (for dipole model)
+# B-dot Controller Gain
+K_BDOT = 4e-2  # [A·m²/(T/s)] — B-dot gain (tune for your system)
+
+# Magnetorquer Disturbance on Magnetometer
+# This models the magnetic field created by the magnetorquers as seen by the magnetometer.
+# It's a simplified linear model: B_disturbance = C * m_command
+# For simplicity, we'll use a single scalar gain. Units: [T / A·m²]
+MAG_DISTURBANCE_GAIN = 1e-7
