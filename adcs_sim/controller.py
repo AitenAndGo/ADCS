@@ -12,7 +12,7 @@ import time
 import numpy as np
 from utils import quaternion_to_rotation_matrix
 from config import K_BDOT, SIMULATION_TIMESTEP
-from filters import complementary_filter_update
+from filters import kalman_filter_update
 from sensors import read_gyroscope, read_magnetometer
 from magnetic_field import get_magnetic_field_readings
 from config import INITIAL_ROTATION_QUATERNION, INITIAL_ANGULAR_VELOCITY, INITIAL_POSITION
@@ -128,7 +128,7 @@ def run_bdot_loop(duration=60, dt=SIMULATION_TIMESTEP):
         B_meas, mag_state = read_magnetometer(B_body_true, m_command_prev, dt, mag_state)
         
         # --- 3. Run Attitude Filter (like real ADCS would) ---
-        filter_output = complementary_filter_update(q_est, omega_meas, B_meas, B_eci_true, dt)
+        filter_output = kalman_filter_update(q_est, omega_meas, B_meas, B_eci_true, dt)
         q_est = filter_output['q_est']
         B_filtered = filter_output['B_filtered']
         B_filtered_list.append(B_filtered.copy())
