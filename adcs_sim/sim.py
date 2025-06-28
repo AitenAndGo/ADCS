@@ -63,15 +63,15 @@ def simulate(duration, time_step):
             prev_filtered_gyro = omega_meas
             prev_filtered_mag = B_meas
         filter_output = complementary_filter_update(prev_filtered_gyro, prev_filtered_mag, omega_meas, B_meas)
-        omega_filtered = filter_output['filtered_gyro']
-        B_filtered = filter_output['filtered_mag']
+        omega_filtered = filter_output[1]
+        B_filtered = filter_output[0]
         filtered_gyros.append(omega_filtered)
         filtered_mags.append(B_filtered)
         prev_filtered_gyro = omega_filtered
         prev_filtered_mag = B_filtered
 
         # --- 4. B-dot Control Law (use filtered magnetic field) ---
-        m_out, bdot_state = b_dot_controller(B_filtered, omega_filtered, bdot_state, dt=time_step)
+        m_out = b_dot_controller(B_filtered, omega_filtered, time_step)
         commanded_moments.append(m_out.copy())
         m_command_prev = m_out.copy()
 
