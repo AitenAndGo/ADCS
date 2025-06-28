@@ -5,8 +5,7 @@ from attitude import update_rotation
 from magnetic_field import get_magnetic_field_readings
 from sensors import read_gyroscope, read_magnetometer
 from filters import complementary_filter_update
-from controller import bdot_feedback_loop, get_control_torque
-from utils import quaternion_to_rotation_matrix
+from controller import get_control_torque, b_dot_controller
 
 def simulate(duration, time_step):
     """
@@ -30,9 +29,15 @@ def simulate(duration, time_step):
     magnetic_fields_body = []
     noisy_gyros = []
     noisy_mags = []
+    filtered_gyros = []
+    filtered_mags = []
     estimated_quaternions = [q_est.copy()]
     control_torques = [np.array([0, 0, 0])]
     commanded_moments = [m_command_prev.copy()]
+    # Initialize previous filtered values as first noisy readings
+    prev_filtered_gyro = None
+    prev_filtered_mag = None
+    bdot_state = {}
 
     # --- Simulation Loop ---
     print("Starting closed-loop simulation...")
@@ -53,17 +58,21 @@ def simulate(duration, time_step):
         noisy_gyros.append(omega_meas)
         noisy_mags.append(B_meas)
 
-        # --- 3. Attitude Estimation (Filter) ---
-        filter_output = complementary_filter_update(q_est, omega_meas, B_meas, B_eci_true, time_step)
-        q_est = filter_output['q_est']
-        B_filtered = filter_output['B_filtered']
-        estimated_quaternions.append(q_est.copy())
-        
-        # --- 4. Control Law (B-dot using filtered magnetic field) ---
-        m_out = bdot_feedback_loop(B_filtered)
+        # --- 3. Simple Complementary Filter (filter noisy sensors) ---
+        if i == 0:
+            prev_filtered_gyro = omega_meas
+            prev_filtered_mag = B_meas
+        filter_output = complementary_filter_update(prev_filtered_gyro, prev_filtered_mag, omega_meas, B_meas)
+        omega_filtered = filter_output['filtered_gyro']
+        B_filtered = filter_output['filtered_mag']
+        filtered_gyros.append(omega_filtered)
+        filtered_mags.append(B_filtered)
+        prev_filtered_gyro = omega_filtered
+        prev_filtered_mag = B_filtered
+
+        # --- 4. B-dot Control Law (use filtered magnetic field) ---
+        m_out, bdot_state = b_dot_controller(B_filtered, omega_filtered, bdot_state, dt=time_step)
         commanded_moments.append(m_out.copy())
-        
-        # Update states for next loop
         m_command_prev = m_out.copy()
 
         # --- 5. Actuator Model (compute torque) ---
@@ -100,7 +109,8 @@ def simulate(duration, time_step):
         "magnetic_fields_body": np.array(magnetic_fields_body),
         "noisy_gyros": np.array(noisy_gyros),
         "noisy_mags": np.array(noisy_mags),
-        "estimated_quaternions": np.array(estimated_quaternions),
+        "filtered_gyros": np.array(filtered_gyros),
+        "filtered_mags": np.array(filtered_mags),
         "control_torques": np.array(control_torques),
         "commanded_moments": np.array(commanded_moments)
     }
