@@ -2,6 +2,10 @@
 # utils.py
 # Utility functions and helpers
 # ----------------------------------------------
+# This module provides general-purpose utility functions for the ADCS simulation,
+# including quaternion math, vector normalization, coordinate frame conversions,
+# and numerical integration routines.
+#
 # - Quaternion math, vector normalization, conversions
 # - Coordinate frame transformations
 # - Time helpers and general-purpose tools
@@ -13,12 +17,12 @@ def euler_2_quaternion(phi, theta, psi):
     Converts Euler angles (in radians) to a quaternion.
 
     Parameters:
-    - phi: Roll angle (rotation around x-axis)
-    - theta: Pitch angle (rotation around y-axis)
-    - psi: Yaw angle (rotation around z-axis)
+        phi (float): Roll angle (rotation around x-axis)
+        theta (float): Pitch angle (rotation around y-axis)
+        psi (float): Yaw angle (rotation around z-axis)
 
     Returns:
-    - quaternion: [q0, q1, q2, q3], where q0 is the scalar part
+        quaternion (list): [q0, q1, q2, q3], where q0 is the scalar part
     """
     q0 = np.cos(phi/2) * np.cos(theta/2) * np.cos(psi/2) + np.sin(phi/2) * np.sin(theta/2) * np.sin(psi/2)
     q1 = np.sin(phi/2) * np.cos(theta/2) * np.cos(psi/2) - np.cos(phi/2) * np.sin(theta/2) * np.sin(psi/2)
@@ -36,10 +40,10 @@ def quaternion_2_euler(quaternion):
     Assumes ZYX rotation sequence (psi, theta, phi).
 
     Parameters:
-    - quaternion: list or NumPy array [q0, q1, q2, q3], where q0 is the scalar part.
+        quaternion (list or np.ndarray): [q0, q1, q2, q3], where q0 is the scalar part.
 
     Returns:
-    - euler: NumPy array [phi, theta, psi] corresponding to [roll, pitch, yaw] in radians.
+        euler (np.ndarray): [phi, theta, psi] corresponding to [roll, pitch, yaw] in radians.
     """
     q0, q1, q2, q3 = quaternion
 
@@ -56,23 +60,35 @@ def quaternion_2_euler(quaternion):
 
     return np.array([phi, theta, psi])
 
+
 def rk4_step(f, y, dt, *args):
-    """Generic RK4 integrator"""
+    """
+    Generic Runge-Kutta 4th order (RK4) integrator for ODEs.
+
+    Parameters:
+        f (callable): Function that computes the derivative (dy/dt)
+        y (np.ndarray): Current state vector
+        dt (float): Time step
+        *args: Additional arguments to pass to f
+    Returns:
+        y_new (np.ndarray): State vector after one RK4 step
+    """
     k1 = f(y, *args)
     k2 = f(y + 0.5 * dt * k1, *args)
     k3 = f(y + 0.5 * dt * k2, *args)
     k4 = f(y + dt * k3, *args)
     return y + (dt / 6.0) * (k1 + 2*k2 + 2*k3 + k4)
 
+
 def quaternion_to_rotation_matrix(quaternion):
     """
-    Convert a quaternion to a rotation matrix.
+    Convert a quaternion to a 3x3 rotation matrix.
+    The quaternion should be in [q0, q1, q2, q3] format, with q0 as the scalar part.
     
     Parameters:
-    - quaternion: [q0, q1, q2, q3] where q0 is the scalar component
-    
+        quaternion (list or np.ndarray): [q0, q1, q2, q3] where q0 is the scalar component
     Returns:
-    - R: 3x3 rotation matrix
+        R (np.ndarray): 3x3 rotation matrix
     """
     q0, q1, q2, q3 = quaternion
     
@@ -84,17 +100,30 @@ def quaternion_to_rotation_matrix(quaternion):
     
     return R
 
-#moje
+
 def normalize_quaternion(q):
-    """Normalize a quaternion to unit length."""
+    """
+    Normalize a quaternion to unit length.
+
+    Parameters:
+        q (list or np.ndarray): Quaternion [q0, q1, q2, q3]
+    Returns:
+        q_normalized (np.ndarray): Unit quaternion
+    """
     q = np.array(q)
     return q / np.linalg.norm(q)
+
 
 def quaternion_multiply(q1, q2):
     """
     Hamilton product of two quaternions.
-    q1, q2: [q0, q1, q2, q3] (scalar first)
-    Returns: q = q1 * q2
+    Computes q = q1 * q2.
+
+    Parameters:
+        q1 (list or np.ndarray): First quaternion [q0, q1, q2, q3] (scalar first)
+        q2 (list or np.ndarray): Second quaternion [q0, q1, q2, q3] (scalar first)
+    Returns:
+        q (np.ndarray): Product quaternion [q0, q1, q2, q3]
     """
     w0, x0, y0, z0 = q1
     w1, x1, y1, z1 = q2

@@ -1,3 +1,18 @@
+# ==============================================
+# sim.py
+# Main closed-loop ADCS simulation engine
+# ----------------------------------------------
+# This module runs the full attitude determination and control system (ADCS)
+# simulation for a satellite in orbit. It integrates the orbit, attitude,
+# sensor models, filtering, and control law in a closed loop.
+#
+# - Propagates true satellite state (position, velocity, attitude, angular velocity)
+# - Simulates noisy sensor readings (gyroscope, magnetometer)
+# - Filters sensor data (complementary filter)
+# - Computes control commands (B-dot controller)
+# - Logs all relevant data for analysis and visualization
+# ==============================================
+
 import numpy as np
 from config import INITIAL_POSITION, INITIAL_VELOCITY, INITIAL_ROTATION_QUATERNION, INITIAL_ANGULAR_VELOCITY
 from orbit import update_orbit
@@ -5,34 +20,61 @@ from attitude import update_rotation
 from magnetic_field import get_magnetic_field_readings
 from sensors import read_gyroscope, read_magnetometer
 from filters import complementary_filter_update
-from controller import bdot_feedback_loop, get_control_torque
-from utils import quaternion_to_rotation_matrix
+from controller import get_control_torque, b_dot_controller
 
 def simulate(duration, time_step):
     """
     Runs the full closed-loop ADCS simulation.
+    This function simulates the satellite's orbit, attitude, sensor readings,
+    filtering, and control law in a time-stepped loop. All relevant data is
+    logged and returned for analysis and plotting.
+
+    Args:
+        duration (float): Total simulation time (seconds)
+        time_step (float): Simulation time step (seconds)
+    Returns:
+        dict: Dictionary containing time histories of all relevant states and signals:
+            - times: Time array (s)
+            - positions: Position vectors (km)
+            - velocities: Velocity vectors (km/s)
+            - quaternions: Attitude quaternions (ECI to body)
+            - omegas: Angular velocity vectors (rad/s)
+            - magnetic_fields_eci: Magnetic field in ECI frame (Tesla)
+            - magnetic_fields_body: Magnetic field in body frame (Tesla)
+            - noisy_gyros: Noisy gyroscope readings (rad/s)
+            - noisy_mags: Noisy magnetometer readings (Tesla)
+            - filtered_gyros: Filtered angular velocity (rad/s)
+            - filtered_mags: Filtered magnetic field (Tesla)
+            - control_torques: Control torques applied (N·m)
+            - commanded_moments: Commanded magnetic moments (A·m²)
     """
     times = np.arange(0, duration + time_step, time_step)
     
-    # Initialize true state lists
+    # --- Initialize true state lists ---
     positions = [np.array(INITIAL_POSITION)]
     velocities = [np.array(INITIAL_VELOCITY)]
     quaternions = [np.array(INITIAL_ROTATION_QUATERNION)]
     omegas = [np.array(INITIAL_ANGULAR_VELOCITY)]
     
-    # Initialize sensor and filter states
+    # --- Initialize sensor and filter states ---
     gyro_state, mag_state = {}, {}
     q_est = np.array(INITIAL_ROTATION_QUATERNION)
     m_command_prev = np.array([0, 0, 0])  # Initial command is zero
     
-    # Initialize data logging lists
+    # --- Initialize data logging lists ---
     magnetic_fields_eci = []
     magnetic_fields_body = []
     noisy_gyros = []
     noisy_mags = []
+    filtered_gyros = []
+    filtered_mags = []
     estimated_quaternions = [q_est.copy()]
     control_torques = [np.array([0, 0, 0])]
     commanded_moments = [m_command_prev.copy()]
+    # Initialize previous filtered values as first noisy readings
+    prev_filtered_gyro = None
+    prev_filtered_mag = None
+    bdot_state = {}
 
     # --- Simulation Loop ---
     print("Starting closed-loop simulation...")
@@ -42,7 +84,7 @@ def simulate(duration, time_step):
         current_quat = quaternions[-1]
         current_omega = omegas[-1]
         
-        # --- 1. Get True Magnetic Field ---
+        # --- 1. Get True Magnetic Field (ECI and body frames) ---
         B_eci_true, B_body_true = get_magnetic_field_readings(current_pos, current_quat, t)
         magnetic_fields_eci.append(B_eci_true)
         magnetic_fields_body.append(B_body_true)
@@ -53,24 +95,28 @@ def simulate(duration, time_step):
         noisy_gyros.append(omega_meas)
         noisy_mags.append(B_meas)
 
-        # --- 3. Attitude Estimation (Filter) ---
-        filter_output = complementary_filter_update(q_est, omega_meas, B_meas, B_eci_true, time_step)
-        q_est = filter_output['q_est']
-        B_filtered = filter_output['B_filtered']
-        estimated_quaternions.append(q_est.copy())
-        
-        # --- 4. Control Law (B-dot using filtered magnetic field) ---
-        m_out = bdot_feedback_loop(B_filtered)
+        # --- 3. Simple Complementary Filter (filter noisy sensors) ---
+        if i == 0:
+            prev_filtered_gyro = omega_meas
+            prev_filtered_mag = B_meas
+        filter_output = complementary_filter_update(prev_filtered_gyro, prev_filtered_mag, omega_meas, B_meas)
+        omega_filtered = filter_output[1]
+        B_filtered = filter_output[0]
+        filtered_gyros.append(omega_filtered)
+        filtered_mags.append(B_filtered)
+        prev_filtered_gyro = omega_filtered
+        prev_filtered_mag = B_filtered
+
+        # --- 4. B-dot Control Law (use filtered magnetic field and angular velocity) ---
+        m_out = b_dot_controller(B_filtered, omega_filtered) # time step
         commanded_moments.append(m_out.copy())
-        
-        # Update states for next loop
         m_command_prev = m_out.copy()
 
-        # --- 5. Actuator Model (compute torque) ---
+        # --- 5. Actuator Model (compute torque from magnetorquers) ---
         current_torque = get_control_torque(m_out, B_body_true)
         control_torques.append(current_torque)
 
-        # --- 6. Dynamics Propagation ---
+        # --- 6. Dynamics Propagation (update orbit and attitude) ---
         new_pos, new_vel = update_orbit(current_pos, current_vel, time_step)
         new_quat, new_omega = update_rotation(current_quat, current_omega, current_torque, time_step)
         
@@ -79,12 +125,12 @@ def simulate(duration, time_step):
         quaternions.append(new_quat)
         omegas.append(new_omega)
         
-        # Print progress
+        # Print progress every 100 steps or at the end
         progress_percent = (i + 1) / (len(times) -1) * 100
         if (i + 1) % 100 == 0 or (i + 1) == len(times) - 1:
             print(f"\rSimulation Progress: {progress_percent:.2f}%", end="")
 
-    # Final magnetic field reading for the last point
+    # --- Final magnetic field reading for the last point ---
     B_eci_true, B_body_true = get_magnetic_field_readings(positions[-1], quaternions[-1], times[-1])
     magnetic_fields_eci.append(B_eci_true)
     magnetic_fields_body.append(B_body_true)
@@ -100,7 +146,8 @@ def simulate(duration, time_step):
         "magnetic_fields_body": np.array(magnetic_fields_body),
         "noisy_gyros": np.array(noisy_gyros),
         "noisy_mags": np.array(noisy_mags),
-        "estimated_quaternions": np.array(estimated_quaternions),
+        "filtered_gyros": np.array(filtered_gyros),
+        "filtered_mags": np.array(filtered_mags),
         "control_torques": np.array(control_torques),
         "commanded_moments": np.array(commanded_moments)
     }
