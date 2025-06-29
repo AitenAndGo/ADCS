@@ -85,4 +85,4 @@ This project was developed as part of an academic exploration of spacecraft atti
 
 License
 
-This project is released under the MIT License. See [MIT License](LICENSE) file for details.
+This project is released under the MIT License. See [MIT License](MIT License) file for details.
