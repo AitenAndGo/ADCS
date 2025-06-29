@@ -53,6 +53,7 @@ pip install -r requirements.txt
 
 To start the simulation and generate plots:
 ```
+cd adcs_sim
 python main.py
 ```
 This will perform the following actions:
