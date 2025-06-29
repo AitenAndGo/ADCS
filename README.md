@@ -18,4 +18,18 @@ This project implements a complete Attitude Determination and Control System (AD
 - Data export to CSV format for external visualization
 - Optional launching of a Unity-based 3D visualization application
 
+## Repository Structure
+
+ADCS/
+├── main.py                 # Main entry point: simulation + plotting + data export
+├── sim.py                  # Core simulation engine (closed-loop)
+├── config.py               # Initial conditions and constants
+├── /controller/            # B-dot controller and torque computation
+├── /filters/               # Complementary filtering implementation
+├── /sensors/               # Sensor models with noise
+├── /orbit/, /attitude/     # Physics-based models for orbit and attitude
+├── requirements.txt        # Python dependencies
+└── SateliteSim.exe         # Unity-based visualization (external)
+
+
 
